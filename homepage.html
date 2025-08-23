@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Baba Merchant | Homepage</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+  <!-- Header -->
+<div class="flex justify-between items-center mb-6">
+  <h1 class="text-2xl font-bold">Welcome, <span id="username"></span></h1>
+  <div class="space-x-4">
+    <button onclick="goToOrderHistory()" class="bg-blue-600 text-white px-4 py-1 rounded">View Order History</button>
+    <button onclick="logout()" class="text-red-600 underline">Logout</button>
+  </div>
+</div>
+
+
+  <!-- Company Logos -->
+  <h2 class="text-xl font-semibold mb-4">Choose a Company</h2>
+  <div id="companyGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6"></div>
+
+  <script>
+    const customerName = localStorage.getItem("customer_name");
+    const customerId = localStorage.getItem("customer_id");
+
+    if (!customerName || !customerId) {
+      window.location.href = "landing.html";
+    } else {
+      document.getElementById("username").textContent = customerName;
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "landing.html";
+    }
+
+    async function loadCompanies() {
+      try {
+        const res = await fetch("/api/companies");
+        const companies = await res.json();
+
+        const grid = document.getElementById("companyGrid");
+        companies.forEach(c => {
+          const card = document.createElement("div");
+          card.className = "bg-white p-4 rounded shadow hover:shadow-lg cursor-pointer text-center";
+          card.innerHTML = `
+            <img src="${c.logo_url}" alt="${c.name}" class="w-24 h-24 mx-auto object-contain mb-2" />
+            <p class="font-medium text-gray-700">${c.name}</p>
+          `;
+          card.onclick = () => {
+            window.location.href = `index.html?company_id=${c.id}`;
+          };
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        alert("Failed to load company logos.");
+        console.error(err);
+      }
+    }
+
+    loadCompanies();
+  </script>
+<script>
+  function goToOrderHistory() {
+    window.location.href = "order-history.html";
+  }
+</script>
+
+</body>
+</html>

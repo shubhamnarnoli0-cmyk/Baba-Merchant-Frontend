@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Order History</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+  <div class="max-w-4xl mx-auto bg-white p-6 rounded shadow">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h1 class="text-2xl font-bold">Order History</h1>
+        <p id="welcomeText" class="text-sm text-gray-600"></p>
+      </div>
+      <div class="space-x-2">
+        <button onclick="goToShop()" class="bg-blue-600 text-white px-4 py-2 rounded">Back to Shop</button>
+        <button onclick="logout()" class="text-red-600 underline">Logout</button>
+      </div>
+    </div>
+
+    <div id="orderContainer" class="space-y-6">
+      <!-- Orders will load here -->
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3001/api";
+    const customer_id = localStorage.getItem("customer_id");
+
+    if (!customer_id) {
+      window.location.href = "landing.html";
+    } else {
+      document.getElementById("welcomeText").textContent = `Logged in as: ${customer_id}`;
+    }
+
+    function logout() {
+      localStorage.removeItem("customer_id");
+      localStorage.removeItem("cart");
+      window.location.href = "landing.html";
+    }
+
+    function goToShop() {
+      window.location.href = "homepage.html";
+    }
+
+    async function fetchOrderHistory() {
+      try {
+        const res = await fetch(`${API_BASE}/order-history?customer_id=${customer_id}`);
+        const orders = await res.json();
+        const container = document.getElementById("orderContainer");
+
+        if (orders.length === 0) {
+          container.innerHTML = "<p class='text-gray-500'>No orders placed yet.</p>";
+          return;
+        }
+
+        orders.forEach(order => {
+          const orderCard = document.createElement("div");
+          orderCard.className = "border border-gray-300 p-4 rounded bg-white shadow-sm";
+
+          const date = new Date(order.created_at).toLocaleString();
+
+          let itemsHTML = order.items.map(item => `
+            <tr>
+              <td class="py-1">${item.name}</td>
+              <td class="py-1 text-center">${item.quantity}</td>
+              <td class="py-1 text-center">₹${item.unit_price}</td>
+              <td class="py-1 text-right">₹${item.total.toFixed(2)}</td>
+            </tr>
+          `).join('');
+
+          orderCard.innerHTML = `
+            <div class="mb-2">
+              <h2 class="text-lg font-semibold">Order #${order.order_id}</h2>
+              <p class="text-sm text-gray-500">Date: ${date}</p>
+            </div>
+            <table class="w-full text-sm mb-2">
+              <thead>
+                <tr class="border-b text-gray-600">
+                  <th class="text-left">Product</th>
+                  <th class="text-center">Qty</th>
+                  <th class="text-center">Unit Price</th>
+                  <th class="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHTML}
+              </tbody>
+            </table>
+            <p class="text-right font-bold text-blue-700">Order Total: ₹${order.total.toFixed(2)}</p>
+          `;
+
+          container.appendChild(orderCard);
+        });
+      } catch (err) {
+        alert("Failed to load order history.");
+        console.error(err);
+      }
+    }
+
+    fetchOrderHistory();
+  </script>
+</body>
+</html>

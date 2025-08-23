@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Salesperson Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">Salesperson Dashboard</h1>
+    <div class="flex items-center gap-4">
+      <span id="salespersonName" class="font-medium text-gray-700">Loading...</span>
+      <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded">Logout</button>
+    </div>
+  </div>
+
+  <!-- Retailer Search -->
+  <div class="mb-6">
+    <label class="block text-sm font-medium text-gray-700 mb-1">Search Retailers:</label>
+    <input 
+      type="text" 
+      id="retailerSearch" 
+      placeholder="Type retailer name..." 
+      oninput="filterRetailers()" 
+      class="border rounded p-2 w-full"
+    />
+  </div>
+
+  <!-- Retailer List -->
+<div id="retailerList" class="bg-white rounded shadow p-4 mb-8">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-lg font-bold">Assigned Retailers</h2>
+    <button 
+      onclick="openAddRetailerModal()" 
+      class="bg-green-600 hover:bg-green-700 text-white font-semibold rounded px-3 py-1 transition">
+      + Add Retailer
+    </button>
+  </div>
+  <ul id="retailerItems" class="divide-y divide-gray-200">
+    <!-- Retailers will be loaded here -->
+  </ul>
+</div>
+
+
+  <!-- Orders Section -->
+  <div id="ordersSection" class="bg-white rounded shadow p-4 mb-8">
+    <div class="flex justify-between items-center mb-3">
+      <h2 class="text-lg font-bold">My Orders</h2>
+
+    </div>
+    <div id="ordersList" class="space-y-4">
+      <!-- Orders will be rendered here -->
+    </div>
+  </div>
+
+  <!-- Sales Summary -->
+  <div class="bg-white rounded shadow p-4">
+    <h2 class="text-lg font-bold mb-3">My Sales Summary</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="p-3 bg-gray-50 rounded text-center">
+        <div class="text-sm text-gray-500">Total Sales</div>
+        <div id="totalSales" class="text-xl font-semibold">₹0</div>
+      </div>
+      <div class="p-3 bg-gray-50 rounded text-center">
+        <div class="text-sm text-gray-500">Total Orders</div>
+        <div id="totalOrders" class="text-xl font-semibold">0</div>
+      </div>
+      <div class="p-3 bg-gray-50 rounded text-center">
+        <div class="text-sm text-gray-500">Total Retailers</div>
+        <div id="totalRetailers" class="text-xl font-semibold">0</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function loadSalespersonData() {
+      try {
+        // Fetch logged-in salesperson details
+        console.log("Cookies in document:", document.cookie);
+        const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/me', { credentials: 'include' });
+        const data = await res.json();
+        document.getElementById('salespersonName').textContent = data.name || 'Salesperson';
+      } catch (err) {
+        console.error('Failed to load salesperson info:', err);
+      }
+    }
+
+    async function loadRetailers() {
+      try {
+        const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/customers', { credentials: 'include' });
+        const customers = await res.json();
+        const list = document.getElementById('retailerItems');
+        list.innerHTML = '';
+        customers.forEach(c => {
+          const li = document.createElement('li');
+          li.className = 'py-2 flex justify-between items-center';
+          li.innerHTML = `
+            <span>${c.name}</span>
+            <button onclick="startNewOrder('${c.customer_id}')" class="bg-green-600 text-white px-3 py-1 rounded text-sm">Order</button>
+          `;
+          list.appendChild(li);
+        });
+        document.getElementById('totalRetailers').textContent = customers.length;
+      } catch (err) {
+        console.error('Failed to load retailers:', err);
+      }
+    }
+
+    async function loadOrders() {
+      try {
+        const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/orders', { credentials: 'include' });
+        const orders = await res.json();
+        const container = document.getElementById('ordersList');
+        container.innerHTML = '';
+        orders.forEach(order => {
+          const div = document.createElement('div');
+          div.className = 'p-3 border rounded';
+          div.innerHTML = `
+            <div class="flex justify-between mb-2">
+              <div><strong>Order #${order.order_id}</strong> - ${order.customer_name}</div>
+              <div class="text-gray-500 text-sm">${new Date(order.created_at).toLocaleDateString()}</div>
+<button onclick="viewOrderDetails(${order.order_id})" class="bg-gray-200 px-2 py-1 rounded text-sm">
+  View Details
+</button>
+
+            </div>
+            <div class="text-sm">Total: ₹${order.total_value}</div>
+
+          `;
+
+          container.appendChild(div);
+        });
+        document.getElementById('totalOrders').textContent = orders.length;
+        const totalSales = orders.reduce((sum, o) => sum + parseFloat(o.total_value), 0);
+        document.getElementById('totalSales').textContent = `₹${totalSales}`;
+      } catch (err) {
+        console.error('Failed to load orders:', err);
+      }
+    }
+
+    function startNewOrder(customerId = null) {
+  if (!customerId) {
+    alert("Please select a retailer first");
+    return;
+  }
+  window.location.href = `/salesperson-order.html?customer_id=${customerId}`;
+    }
+
+    function logout() {
+      fetch('https://baba-merchant-store.onrender.com/api/salesperson/logout', { method: 'POST' })
+        .then(() => window.location.href = '/salesperson-login.html');
+    }
+
+function viewOrderDetails(orderId) {
+  fetch(`https://baba-merchant-store.onrender.com/api/salesperson/orders/${orderId}`, { credentials: 'include' })
+    .then(res => res.json())
+    .then(data => {
+      const content = document.getElementById('orderDetailsContent');
+      content.innerHTML = `
+        <div><strong>Retailer:</strong> ${data.customer_name}</div>
+        <div><strong>Order ID:</strong> ${data.order_id}</div>
+        <div><strong>Status:</strong> ${data.status}</div>
+        <div><strong>Date:</strong> ${new Date(data.created_at).toLocaleString()}</div>
+        <hr class="my-2">
+        <div class="font-semibold">Items:</div>
+        ${data.items.map(item => `
+          <div class="flex justify-between">
+            <span>${item.name} x ${item.quantity} (Final Price: ₹${item.negotiated_price})</span>
+            <span>₹${Number(item.line_total).toFixed(2)}</span>
+          </div>
+        `).join('')}
+        <hr class="my-2">
+        <div class="flex justify-between font-bold">
+          <span>Total</span>
+          <span>₹${data.items.reduce((sum, i) => sum + parseFloat(i.line_total), 0).toFixed(2)}</span>
+        </div>
+      `;
+      document.getElementById('orderDetailsModal').classList.remove('hidden');
+    })
+    .catch(err => console.error("Error loading order details:", err));
+}
+
+function closeOrderDetails() {
+  document.getElementById('orderDetailsModal').classList.add('hidden');
+}
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSalespersonData();
+      loadRetailers();
+      loadOrders();
+    });
+
+function filterRetailers() {
+  const query = document.getElementById('retailerSearch').value.trim().toLowerCase();
+  const retailerItems = document.querySelectorAll('#retailerItems li');
+  retailerItems.forEach(li => {
+    const retailerName = li.querySelector('span').textContent.toLowerCase();
+    if (retailerName.includes(query)) {
+      li.style.display = '';
+    } else {
+      li.style.display = 'none';
+    }
+  });
+}
+
+function openAddRetailerModal() {
+  document.getElementById('addRetailerModal').classList.remove('hidden');
+}
+
+function closeAddRetailerModal() {
+  document.getElementById('addRetailerModal').classList.add('hidden');
+}
+
+async function addRetailer() {
+  const name = document.getElementById('newRetailerName').value.trim();
+  const phone = document.getElementById('newRetailerContact').value.trim();
+  const email = document.getElementById('newRetailerEmail').value.trim();
+  const customer_id = document.getElementById('newRetailerID').value.trim();
+  const region = document.getElementById('newRetailerArea').value.trim();
+  const password = document.getElementById('newRetailerPassword').value.trim();
+
+
+  if (!name || !phone || !email || !password || !region || !customer_id) {
+    alert("All fields are required.");
+    return;
+  }
+
+  const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/customers/add', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, phone, email, password, region, customer_id })
+  });
+
+  const result = await res.json();
+  if (res.ok) {
+    alert("Retailer added successfully.");
+    closeAddRetailerModal();
+    loadRetailers(); // Refresh the retailer/customer list
+  } else {
+    alert(result.error || "Failed to add retailer.");
+  }
+}
+
+
+  </script>
+<!-- Order Details Modal -->
+<div id="orderDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-lg shadow-lg p-4 w-full max-w-lg max-h-[90vh] overflow-auto">
+    <h2 class="text-lg font-bold mb-2">Order Details</h2>
+    <div id="orderDetailsContent" class="space-y-2 text-sm"></div>
+    <button onclick="closeOrderDetails()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4">Close</button>
+  </div>
+</div>
+
+<div id="addRetailerModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+    <h2 class="text-xl font-bold mb-4">Add Retailer</h2>
+    <form>
+      <input type="text" id="newRetailerName" placeholder="Name" class="border rounded p-2 w-full mb-3" required>
+      <input type="text" id="newRetailerContact" placeholder="Contact Number" class="border rounded p-2 w-full mb-3" required>
+      <input type="email" id="newRetailerEmail" placeholder="Email" class="border rounded p-2 w-full mb-3" required>
+<input type="text" id="newRetailerID" placeholder="Retailer ID" class="border rounded p-2 w-full mb-3" required>
+<input type="password" id="newRetailerPassword" placeholder="Password" class="border rounded p-2 w-full mb-3" required>
+<input type="text" id="newRetailerArea" placeholder="Area" class="border rounded p-2 w-full mb-3" required>
+      <!-- Optional: Address, etc. -->
+      <div class="flex justify-end space-x-2 mt-4">
+        <button type="button" onclick="closeAddRetailerModal()" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
+        <button type="button" onclick="addRetailer()" class="bg-green-600 text-white px-4 py-2 rounded">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+</body>
+</html>

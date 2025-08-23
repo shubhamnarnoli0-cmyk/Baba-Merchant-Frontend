@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quick Commerce | Customer Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-md p-8 bg-white rounded shadow space-y-6">
+    <h1 class="text-2xl font-bold text-center">Welcome to Baba Merchant</h1>
+
+    <!-- Sign In Form -->
+    <form id="loginForm" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium">Customer ID</label>
+        <input type="text" name="customer_id" required class="w-full px-3 py-2 border rounded" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Password</label>
+        <input type="password" name="password" required class="w-full px-3 py-2 border rounded" />
+      </div>
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded">Sign In</button>
+      <div class="text-sm text-center text-blue-500 cursor-pointer" onclick="showForm('resetForm')">Forgot Password?</div>
+      <div class="text-sm text-center">Don't have an account?
+        <span class="text-blue-500 cursor-pointer" onclick="showForm('signupForm')">Sign Up</span>
+      </div>
+    </form>
+
+    <!-- Sign Up Form -->
+    <form id="signupForm" class="space-y-4 hidden">
+      <div>
+        <label class="block text-sm font-medium">Customer ID</label>
+        <input type="text" name="customer_id" required class="w-full px-3 py-2 border rounded" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Password</label>
+        <input type="password" name="password" required class="w-full px-3 py-2 border rounded" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Name</label>
+        <input type="text" name="name" class="w-full px-3 py-2 border rounded" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Email</label>
+        <input type="email" name="email" class="w-full px-3 py-2 border rounded" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Phone</label>
+        <input type="text" name="phone" required class="w-full px-3 py-2 border rounded" />
+      </div>
+      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded">Create Account</button>
+      <div class="text-sm text-center text-blue-500 cursor-pointer" onclick="showForm('loginForm')">Back to Login</div>
+    </form>
+
+    <!-- Reset Password Form -->
+    <form id="resetForm" class="space-y-4 hidden">
+      <div>
+        <label class="block text-sm font-medium">Customer ID</label>
+        <input type="text" name="customer_id" required class="w-full px-3 py-2 border rounded" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">New Password</label>
+        <input type="password" name="new_password" required class="w-full px-3 py-2 border rounded" />
+      </div>
+      <button type="submit" class="w-full bg-yellow-500 text-white py-2 rounded">Reset Password</button>
+      <div class="text-sm text-center text-blue-500 cursor-pointer" onclick="showForm('loginForm')">Back to Login</div>
+    </form>
+
+    <!-- Message -->
+    <div id="message" class="text-center font-medium text-sm"></div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3001/api";
+
+    function showForm(id) {
+      document.getElementById("loginForm").classList.add("hidden");
+      document.getElementById("signupForm").classList.add("hidden");
+      document.getElementById("resetForm").classList.add("hidden");
+      document.getElementById(id).classList.remove("hidden");
+      document.getElementById("message").textContent = "";
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      try {
+        const res = await fetch(`${API_BASE}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+	if (res.ok) {
+ 		localStorage.setItem("customer_id", data.customer_id);
+  		localStorage.setItem("customer_name", result.name);
+  		document.getElementById("message").textContent = "Login successful. Redirecting...";
+  		setTimeout(() => {
+    		window.location.href = "homepage.html";
+  		}, 1000);
+	}
+	 else {
+          document.getElementById("message").textContent = result.error || "Login failed";
+        }
+      } catch (err) {
+        console.error("Login error", err);
+        document.getElementById("message").textContent = "Login failed";
+      }
+    });
+
+    document.getElementById("signupForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      try {
+        const res = await fetch(`${API_BASE}/signup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        document.getElementById("message").textContent = res.ok ? "Signup successful!" : (result.error || "Signup failed");
+      } catch (err) {
+        console.error("Signup error", err);
+        document.getElementById("message").textContent = "Signup failed";
+      }
+    });
+
+    document.getElementById("resetForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      try {
+        const res = await fetch(`${API_BASE}/reset`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        document.getElementById("message").textContent = res.ok ? "Password reset!" : (result.error || "Reset failed");
+      } catch (err) {
+        console.error("Reset error", err);
+        document.getElementById("message").textContent = "Reset failed";
+      }
+    });
+  </script>
+</body>
+</html>

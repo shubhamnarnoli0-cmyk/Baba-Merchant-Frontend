@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Create Order - Salesperson</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Ensure tap-friendly inputs & buttons */
+    input, button {
+      min-height: 40px;
+    }
+  </style>
+</head>
+<body class="p-3 sm:p-4 bg-gray-100">
+<!-- Home Button -->
+<div class="mb-4 flex items-center">
+  <a href="salesperson-dashboard.html" class="flex items-center text-blue-600 hover:text-blue-800">
+    <!-- Home SVG Icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9.75L12 3l9 6.75V21a1 1 0 01-1 1h-5.25V14.25H9.25V22H4a1 1 0 01-1-1V9.75z" />
+    </svg>
+    <span class="text-sm font-medium">Home</span>
+  </a>
+</div>
+
+  <h1 class="text-lg sm:text-xl font-bold mb-4">Create Order</h1>
+  
+  <!-- Company Selection -->
+  <div class="mb-6" id="companySection">
+    <h2 class="text-base sm:text-lg font-bold mb-3">Select a Company</h2>
+    <div id="companyGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+      <!-- Company cards will be inserted here -->
+    </div>
+  </div>
+
+  <!-- Products Section -->
+  <div id="productSection" class="hidden">
+    <button onclick="goBackToCompanies()" class="mb-4 text-blue-500 text-sm sm:text-base">&larr; Back to Companies</button>
+    <h2 id="companyName" class="text-base sm:text-lg font-semibold mb-2"></h2>
+
+    <!-- Search -->
+    <div class="mb-4">
+      <input 
+        type="text" 
+        id="productSearch" 
+        placeholder="Search products..." 
+        oninput="filterProducts()" 
+        class="border rounded p-2 w-full text-sm"
+      />
+    </div>
+
+    <div id="productList" class="space-y-3">
+      <!-- Products load here -->
+    </div>
+  </div>
+
+  <!-- Cart -->
+  <div class="mt-8 bg-white p-4 rounded shadow">
+    <h3 class="font-bold mb-2">Cart</h3>
+    <div id="cartItems" class="space-y-2 text-sm"></div>
+    <div id="cartButtons" class="flex flex-col sm:flex-row gap-3 mt-4"></div>
+  </div>
+
+<script>
+let cart = {};
+let currentCustomerId = new URLSearchParams(window.location.search).get('customer_id');
+let allProducts = [];
+let retailerName = '';
+
+async function loadCompanies() {
+  try {
+    const res = await fetch('/api/companies', { credentials: 'include' });
+    const companies = await res.json();
+    const grid = document.getElementById('companyGrid');
+    grid.innerHTML = '';
+
+    companies.forEach(company => {
+      const card = document.createElement('div');
+      card.className = `
+        bg-white rounded-lg shadow p-3 flex flex-col items-center 
+        justify-between cursor-pointer hover:shadow-lg transition-shadow
+      `;
+      card.onclick = () => loadProducts(company.id, company.name);
+
+      const imgWrapper = document.createElement('div');
+      imgWrapper.className = `
+        w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mb-2 
+        border rounded bg-white p-1 overflow-hidden
+      `;
+
+      const img = document.createElement('img');
+      img.src = company.logo_url || 'placeholder.jpg';
+      img.alt = company.name;
+      img.style.maxHeight = '100%';
+      img.style.maxWidth = '100%';
+      img.style.objectFit = 'contain';
+      img.loading = 'lazy';
+
+      imgWrapper.appendChild(img);
+
+      const name = document.createElement('span');
+      name.className = 'text-xs sm:text-sm font-medium text-center break-words';
+      name.textContent = company.name;
+
+      card.appendChild(imgWrapper);
+      card.appendChild(name);
+      grid.appendChild(card);
+    });
+  } catch (err) {
+    console.error('Failed to load companies:', err);
+  }
+}
+
+async function loadProducts(companyId, name) {
+  document.getElementById('companyGrid').classList.add('hidden');
+  document.getElementById('productSection').classList.remove('hidden');
+  document.getElementById('companyName').textContent = name;
+
+  try {
+    const res = await fetch(`/api/salesperson/companies/${companyId}/products`, { credentials: 'include' });
+    const products = await res.json();
+    allProducts = products.filter(p => p.is_active);
+    renderProducts(allProducts);
+  } catch (err) {
+    console.error("Error loading products:", err);
+  }
+}
+
+async function fetchRetailerName() {
+  try {
+    const res = await fetch(`/api/retailers/${currentCustomerId}`, { credentials: 'include' });
+    const data = await res.json();
+    retailerName = data.name || currentCustomerId;
+  } catch (err) {
+    retailerName = currentCustomerId;
+  }
+}
+
+fetchRetailerName();
+
+function clearCart() {
+  if (confirm("Are you sure you want to clear the cart?")) {
+    cart = {};
+    renderCart();
+  }
+}
+
+function renderProducts(products) {
+  const list = document.getElementById('productList');
+  list.innerHTML = '';
+
+  if (products.length === 0) {
+    list.innerHTML = `<div class="text-gray-500 text-sm">No products found.</div>`;
+    return;
+  }
+
+  products.forEach(p => {
+    const div = document.createElement('div');
+    div.className = "bg-gray-50 p-3 rounded-lg shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3";
+
+    div.innerHTML = `
+      <div class="flex items-center gap-3">
+        <img src="${p.image_url}" class="h-12 w-12 object-contain rounded border bg-white p-1">
+        <div>
+          <div class="font-medium text-sm sm:text-base">${p.name}</div>
+          <div class="text-xs text-gray-500">Base Price: ₹${p.base_price}</div>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-col">
+          <label class="text-xs text-gray-500">Qty</label>
+          <input type="number" min="0" value="0" 
+            class="w-16 border rounded p-1 text-center text-sm"
+            id="qty-${p.id}">
+        </div>
+        <div class="flex flex-col">
+          <label class="text-xs text-gray-500">Final Price</label>
+          <input type="number" min="p.min_retail_price" max="${p.base_price}" value="0" 
+            class="w-16 border rounded p-1 text-center text-sm"
+            id="discount-${p.id}">
+        </div>
+        <button onclick="addProductToCart(${p.id}, '${p.name}', ${p.base_price}, ${p.price}, ${p.min_retail_price})" 
+          class="bg-blue-500 text-white px-3 py-1 rounded text-sm">
+          Add
+        </button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function filterProducts() {
+  const query = document.getElementById('productSearch').value.toLowerCase();
+  const filtered = allProducts.filter(p => p.name.toLowerCase().includes(query));
+  renderProducts(filtered);
+}
+
+function addProductToCart(productId, name, basePrice, price, minPrice) {
+  const qty = parseInt(document.getElementById(`qty-${productId}`).value) || 0;
+  const discount = parseFloat(document.getElementById(`discount-${productId}`).value) || 0;
+
+  if (qty <= 0) return alert("Enter valid quantity");
+  if (discount < minPrice || discount > basePrice) return alert(`Final Price must be between ₹${minPrice} and ₹${basePrice}`);
+
+  cart[productId] = { product_id: productId, quantity: qty, negotiated_price: discount, name, base_price: basePrice, unit_price: price };
+  renderCart();
+}
+
+function goBackToCompanies() {
+  document.getElementById('productSection').classList.add('hidden');
+  document.getElementById('companyGrid').classList.remove('hidden');
+}
+
+function removeFromCart(productId) {
+  delete cart[productId];
+  renderCart();
+}
+
+function renderCart() {
+  const container = document.getElementById('cartItems');
+  const buttonsContainer = document.getElementById('cartButtons');
+  container.innerHTML = '';
+  
+  Object.values(cart).forEach(item => {
+    container.innerHTML += `
+      <div class="flex justify-between items-center">
+        <span>${item.name} x ${item.quantity} (Final Price: ₹${item.negotiated_price})</span>
+        <button onclick="removeFromCart(${item.product_id})" class="text-red-500 text-xs">❌</button>
+      </div>
+    `;
+  });
+
+  const distinctCount = Object.keys(cart).length;
+  document.getElementById('cartCount').textContent = distinctCount;
+
+  buttonsContainer.innerHTML = distinctCount > 0 
+    ? `<button onclick="clearCart()" class="bg-red-500 text-white px-3 py-2 rounded text-sm">Clear</button>
+       <button onclick="submitOrder()" class="bg-green-600 text-white px-3 py-2 rounded text-sm">Submit</button>`
+    : '';
+}
+
+function scrollToCart() {
+  document.getElementById('cartItems').scrollIntoView({ behavior: 'smooth' });
+}
+
+function submitOrder() {
+  const items = Object.values(cart);
+  if (!items.length) return alert("Cart is empty!");
+  openReviewModal();
+}
+
+function openReviewModal() {
+  const reviewItemsContainer = document.getElementById('reviewOrderItems');
+  const retailerDisplay = document.getElementById('reviewRetailerName');
+
+  retailerDisplay.textContent = retailerName || currentCustomerId;
+  reviewItemsContainer.innerHTML = '';
+
+  Object.values(cart).forEach(item => {
+    reviewItemsContainer.innerHTML += `
+      <div class="flex justify-between items-center border-b pb-1">
+        <div>
+          <div class="font-medium">${item.name}</div>
+          <div class="text-xs text-gray-500">
+            Qty: ${item.quantity} | Final Price: ₹${item.negotiated_price} | Price: ₹${item.unit_price}
+          </div>
+        </div>
+        <div class="font-semibold">₹${(item.negotiated_price * item.quantity).toFixed(2)}</div>
+      </div>
+    `;
+  });
+
+  document.getElementById('reviewOrderModal').classList.remove('hidden');
+}
+
+function closeReviewModal() {
+  document.getElementById('reviewOrderModal').classList.add('hidden');
+}
+
+async function placeOrder() {
+  const items = Object.values(cart);
+  if (!items.length) {
+    alert("Cart is empty!");
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/salesperson/orders', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_id: currentCustomerId, items })
+    });
+    const data = await res.json();
+
+    if (data.order_id) {
+      alert(`Order #${data.order_id} placed successfully!`);
+      cart = {};
+      renderCart();
+      closeReviewModal();
+    } else {
+      alert("Failed to place order");
+    }
+  } catch (err) {
+    console.error("Order submission error:", err);
+    alert("Error placing order");
+  }
+}
+
+
+loadCompanies();
+</script>
+
+<!-- Floating Cart -->
+<div id="floatingCartCard" onclick="scrollToCart()" class="fixed bottom-5 right-5 bg-white border border-gray-300 rounded-lg shadow-lg p-3 flex items-center gap-2 cursor-pointer z-50">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 7h13l-1.5-7M9 21a1 1 0 11-2 0 1 1 0 012 0zm10 0a1 1 0 11-2 0 1 1 0 012 0z" />
+  </svg>
+  <div>
+    <div class="text-xs text-gray-500">Items</div>
+    <div id="cartCount" class="text-base font-bold">0</div>
+  </div>
+</div>
+<!-- Review Order Modal -->
+<div id="reviewOrderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white w-full sm:w-3/4 md:w-1/2 lg:w-1/3 rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+    
+    <!-- Modal Header -->
+    <div class="px-4 py-3 border-b flex justify-between items-center bg-gray-100 rounded-t-lg">
+      <h2 class="text-base sm:text-lg font-bold">Review Order</h2>
+      <button onclick="closeReviewModal()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
+    </div>
+
+    <!-- Retailer Info -->
+    <div class="px-4 py-2 border-b text-sm sm:text-base">
+      <span class="font-semibold">Retailer:</span> <span id="reviewRetailerName"></span>
+    </div>
+
+    <!-- Scrollable Items List -->
+    <div class="px-4 py-3 overflow-y-auto flex-1">
+      <div id="reviewOrderItems" class="space-y-2 text-sm sm:text-base"></div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="px-4 py-3 border-t flex flex-col sm:flex-row gap-2">
+      <button onclick="placeOrder()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full sm:w-auto">Place Order</button>
+      <button onclick="closeReviewModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded w-full sm:w-auto">Cancel</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

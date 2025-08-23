@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quick Commerce - Shop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-4">
+
+  <!-- Navbar -->
+  <div class="flex justify-between items-center mb-6 border-b pb-4">
+    <div>
+      <h1 class="text-2xl font-bold">Baba Merchant</h1>
+      <p id="welcome" class="text-sm text-gray-600"></p>
+    </div>
+    <div class="flex items-center gap-4">
+      <button onclick="goToCart()" class="relative bg-blue-600 text-white px-4 py-2 rounded">
+        Cart
+        <span id="cartCount" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">0</span>
+      </button>
+      <button onclick="logout()" class="text-red-600 underline">Logout</button>
+    </div>
+  </div>
+
+  <!-- Product Grid -->
+  <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
+
+  <!-- Cart Modal -->
+  <div id="cartModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center">
+    <div class="bg-white p-6 rounded shadow w-full max-w-lg space-y-4">
+      <h2 class="text-xl font-semibold">Your Cart</h2>
+      <div id="cartItems" class="space-y-2"></div>
+      <button onclick="placeOrder()" class="bg-green-600 text-white px-4 py-2 rounded">Place Order</button>
+      <button onclick="closeCart()" class="text-blue-600 underline">Close</button>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white p-6 rounded shadow w-full max-w-sm text-center space-y-4">
+      <p>Are you sure you want to place this order?</p>
+      <div class="flex justify-around">
+        <button onclick="confirmOrder()" class="bg-green-600 text-white px-4 py-1 rounded">Confirm</button>
+        <button onclick="closeConfirm()" class="bg-red-500 text-white px-4 py-1 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3001/api";
+    const customer_id = localStorage.getItem("customer_id");
+
+    if (!customer_id) {
+      window.location.href = "landing.html";
+    } else {
+      document.getElementById("welcome").textContent = `Logged in as: ${customer_id}`;
+    }
+
+    function logout() {
+      localStorage.removeItem("customer_id");
+      localStorage.removeItem("cart");
+      window.location.href = "landing.html";
+    }
+
+    let products = [];
+    let cart = JSON.parse(localStorage.getItem("cart")) || {};
+
+    function renderProducts() {
+      const grid = document.getElementById("productGrid");
+      grid.innerHTML = "";
+      products.forEach((p) => {
+        const div = document.createElement("div");
+        div.className = "border p-4 rounded shadow bg-white space-y-2";
+
+        div.innerHTML = `
+          <h2 class="text-lg font-bold">${p.name}</h2>
+<p class="text-gray-600">Base Price: ₹${p.base_price}</p>
+<p class="text-gray-600">Max Discount Allowed: ${p.max_discount_allowed}%</p>
+<div class="flex items-center space-x-2 text-gray-600 text-sm">
+  <span>Discount Availed (%)</span>
+  <input type="number"
+         min="0"
+         max="${p.max_discount_allowed}"
+         value="${p.discount_availed || 0}"
+         id="discount-${p.id}"
+         class="w-16 border px-2 py-1 rounded"
+         onchange="updateDiscount(${p.id}, this.value, ${p.max_discount_allowed})"
+         title="Max discount allowed: ${p.max_discount_allowed}%" />
+
+</div>
+
+
+<input type="number" min="1" value="1" id="qty-${p.id}" class="w-20 border px-2 py-1 rounded" />
+
+          <button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="addToCart(${p.id})">Add to Cart</button>
+        `;
+        grid.appendChild(div);
+const discountInput = div.querySelector(`#discount-${p.id}`);
+    discountInput.addEventListener("input", function () {
+      const max = parseFloat(p.max_discount_allowed);
+      const val = parseFloat(this.value);
+
+      if (val > max) {
+        this.value = max;
+        showTooltip(this, `Cannot exceed ${max}%`);
+      }
+    });
+  });
+}
+
+
+function getCompanyIdFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("company_id");
+}
+
+async function fetchProducts() {
+  try {
+    const companyId = getCompanyIdFromURL();
+    const url = companyId
+      ? `${API_BASE}/products?company_id=${companyId}`
+      : `${API_BASE}/products`;
+
+    const res = await fetch(url);
+    products = await res.json();
+    renderProducts();
+    updateCartCount();
+  } catch (err) {
+    alert("Failed to fetch products.");
+    console.error(err);
+  }
+}
+
+function updateDiscount(productId, value, maxAllowed) {
+  let discount = parseFloat(value);
+  if (isNaN(discount) || discount < 0) discount = 0;
+  if (discount > maxAllowed) {
+    alert(`Discount cannot exceed ${maxAllowed}%`);
+    discount = maxAllowed;
+    document.getElementById(`discount-${productId}`).value = discount;
+  }
+
+  // Store discount for later use in order placement
+  if (!cart[productId]) cart[productId] = 0; // Ensure product exists in cart
+  localStorage.setItem(`discount_${productId}`, discount);
+}
+
+
+
+    function addToCart(productId) {
+      const qty = parseInt(document.getElementById(`qty-${productId}`).value);
+      if (qty <= 0) return;
+
+      cart[productId] = (cart[productId] || 0) + qty;
+      localStorage.setItem("cart", JSON.stringify(cart));
+      updateCartCount();
+    }
+
+    function updateCartCount() {
+      document.getElementById("cartCount").textContent = Object.keys(cart).length;
+    }
+
+    function goToCart() {
+      const cartItems = document.getElementById("cartItems");
+      cartItems.innerHTML = "";
+
+	Object.entries(cart).forEach(([pid, qty]) => {
+  	const product = products.find((p) => p.id == pid);
+  	const div = document.createElement("div");
+  	div.className = "flex justify-between items-center border-b py-2";
+
+ 	div.innerHTML = `
+    	<div class="flex-1">
+      	<p class="font-medium">${product.name}</p>
+    	</div>
+    	<input type="number" min="1" value="${qty}" class="w-16 px-2 py-1 border rounded text-center" 	onchange="updateCartQty(${product.id}, this.value)" />
+    	<button class="ml-2 text-red-600 hover:underline" onclick="removeFromCart(${product.id})">Remove</button>
+  `	;
+
+  	cartItems.appendChild(div);
+	});
+
+
+      document.getElementById("cartModal").classList.remove("hidden");
+    }
+	
+	function updateCartQty(productId, newQty) {
+  const qty = parseInt(newQty);
+  if (isNaN(qty) || qty <= 0) {
+    removeFromCart(productId);
+    return;
+  }
+  cart[productId] = qty;
+  localStorage.setItem("cart", JSON.stringify(cart));
+  updateCartCount();
+}
+
+function removeFromCart(productId) {
+  delete cart[productId];
+  localStorage.setItem("cart", JSON.stringify(cart));
+  updateCartCount();
+  goToCart(); // Re-render cart modal
+}
+
+
+    function closeCart() {
+      document.getElementById("cartModal").classList.add("hidden");
+    }
+
+    function placeOrder() {
+      document.getElementById("confirmModal").classList.remove("hidden");
+    }
+
+    function closeConfirm() {
+      document.getElementById("confirmModal").classList.add("hidden");
+    }
+
+    async function confirmOrder() {
+const orderItems = Object.entries(cart).map(([product_id, quantity]) => ({
+  product_id: parseInt(product_id),
+  quantity,
+  discount_availed: parseFloat(localStorage.getItem(`discount_${product_id}`) || 0)
+}));
+
+
+      try {
+        const res = await fetch(`${API_BASE}/place-order`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customer_id, items: orderItems }),
+        });
+
+        if (res.ok) {
+          alert("Order placed successfully!");
+          cart = {};
+          localStorage.removeItem("cart");
+          updateCartCount();
+          closeCart();
+          closeConfirm();
+        } else {
+          alert("Failed to place order.");
+        }
+      } catch (err) {
+        alert("Error placing order.");
+      }
+    }
+
+    fetchProducts();
+function showTooltip(el, message) {
+  const tooltip = document.createElement("div");
+  tooltip.textContent = message;
+  tooltip.className =
+    "absolute bg-red-500 text-white text-xs px-2 py-1 rounded shadow";
+  tooltip.style.top = `${el.offsetTop - 30}px`;
+  tooltip.style.left = `${el.offsetLeft}px`;
+  tooltip.style.zIndex = 9999;
+
+  el.parentElement.style.position = "relative";
+  el.parentElement.appendChild(tooltip);
+
+  setTimeout(() => tooltip.remove(), 2000);
+}
+
+
+</script>
+</body>
+</html>
