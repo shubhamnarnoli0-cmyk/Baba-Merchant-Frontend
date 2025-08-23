@@ -70,7 +70,7 @@ let retailerName = '';
 
 async function loadCompanies() {
   try {
-    const res = await fetch('/api/companies', { credentials: 'include' });
+    const res = await fetch('https://baba-merchant-store.onrender.com/api/companies', { credentials: 'include' });
     const companies = await res.json();
     const grid = document.getElementById('companyGrid');
     grid.innerHTML = '';
@@ -118,7 +118,7 @@ async function loadProducts(companyId, name) {
   document.getElementById('companyName').textContent = name;
 
   try {
-    const res = await fetch(`/api/salesperson/companies/${companyId}/products`, { credentials: 'include' });
+    const res = await fetch(`https://baba-merchant-store.onrender.com/api/salesperson/companies/${companyId}/products`, { credentials: 'include' });
     const products = await res.json();
     allProducts = products.filter(p => p.is_active);
     renderProducts(allProducts);
@@ -129,7 +129,7 @@ async function loadProducts(companyId, name) {
 
 async function fetchRetailerName() {
   try {
-    const res = await fetch(`/api/retailers/${currentCustomerId}`, { credentials: 'include' });
+    const res = await fetch(`https://baba-merchant-store.onrender.com/api/retailers/${currentCustomerId}`, { credentials: 'include' });
     const data = await res.json();
     retailerName = data.name || currentCustomerId;
   } catch (err) {
@@ -286,7 +286,7 @@ async function placeOrder() {
   }
 
   try {
-    const res = await fetch('/api/salesperson/orders', {
+    const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/orders', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
