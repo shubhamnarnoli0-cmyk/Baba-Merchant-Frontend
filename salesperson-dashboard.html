@@ -28,6 +28,30 @@
       class="border rounded p-2 w-full"
     />
   </div>
+<!-- Area Filter (Salesperson Dashboard) -->
+<div class="relative w-full sm:w-[300px] mb-4">
+  <label class="text-sm font-medium text-gray-700">Area:</label>
+  <div
+    id="spAreaMultiSelect"
+    class="border rounded p-2 mt-1 bg-white min-h-[42px] flex flex-wrap gap-1 cursor-text"
+    onclick="toggleSpAreaDropdown(true)"
+  >
+    <input
+      type="text"
+      id="spAreaSearchInput"
+      class="outline-none flex-1 min-w-[100px]"
+      placeholder="Search areas..."
+      oninput="filterSpAreaList()"
+    />
+  </div>
+
+  <div
+    id="spAreaDropdown"
+    class="absolute z-10 bg-white border border-gray-300 rounded w-full mt-1 max-h-48 overflow-y-auto shadow hidden"
+  >
+    <!-- options will be injected dynamically -->
+  </div>
+</div>
 
   <!-- Retailer List -->
 <div id="retailerList" class="bg-white rounded shadow p-4 mb-8">
@@ -79,7 +103,6 @@
     async function loadSalespersonData() {
       try {
         // Fetch logged-in salesperson details
-        console.log("Cookies in document:", document.cookie);
         const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/me', { credentials: 'include' });
         const data = await res.json();
         document.getElementById('salespersonName').textContent = data.name || 'Salesperson';
@@ -89,25 +112,47 @@
     }
 
     async function loadRetailers() {
-      try {
-        const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/customers', { credentials: 'include' });
-        const customers = await res.json();
-        const list = document.getElementById('retailerItems');
-        list.innerHTML = '';
-        customers.forEach(c => {
-          const li = document.createElement('li');
-          li.className = 'py-2 flex justify-between items-center';
-          li.innerHTML = `
-            <span>${c.name}</span>
-            <button onclick="startNewOrder('${c.customer_id}')" class="bg-green-600 text-white px-3 py-1 rounded text-sm">Order</button>
-          `;
-          list.appendChild(li);
-        });
-        document.getElementById('totalRetailers').textContent = customers.length;
-      } catch (err) {
-        console.error('Failed to load retailers:', err);
+  try {
+    const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/customers', { credentials: 'include' });
+    let customers = await res.json();
+
+    // 🔹 Apply Area filter if selected
+    if (typeof getSelectedSpAreas === 'function') {
+      const chosenAreas = getSelectedSpAreas();
+      if (chosenAreas.length > 0) {
+        customers = customers.filter(c =>
+          chosenAreas.includes((c.region || '').trim())
+        );
       }
     }
+
+    const list = document.getElementById('retailerItems');
+    list.innerHTML = '';
+
+    customers.forEach(c => {
+      const li = document.createElement('li');
+      li.className = 'py-2 flex justify-between items-center';
+      li.innerHTML = `
+        <span>${c.name}</span>
+        <button onclick="startNewOrder('${c.customer_id}')" 
+                class="bg-green-600 text-white px-3 py-1 rounded text-sm">
+          Order
+        </button>
+      `;
+      list.appendChild(li);
+    });
+
+    document.getElementById('totalRetailers').textContent = customers.length;
+  } catch (err) {
+    console.error('Failed to load retailers:', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  populateSpAreaFilter();
+});
+
+
 
     async function loadOrders() {
       try {
@@ -244,6 +289,113 @@ async function addRetailer() {
   } else {
     alert(result.error || "Failed to add retailer.");
   }
+}
+
+// ------- Salesperson Area filter state -------
+const spAreaState = {
+  all: [],
+  selected: new Set()
+};
+
+async function populateSpAreaFilter() {
+  try {
+    const res = await fetch('https://baba-merchant-store.onrender.com/api/salesperson/customers', { credentials: 'include' });
+    const retailers = await res.json();
+    const regions = [...new Set(retailers.map(r => (r.region || '').trim()).filter(Boolean))];
+    spAreaState.all = regions.sort((a, b) => a.localeCompare(b));
+    renderSpAreaDropdownList(spAreaState.all);
+    renderSpAreaChips();
+  } catch (err) {
+    console.error("populateSpAreaFilter failed:", err);
+  }
+}
+
+function toggleSpAreaDropdown(forceShow) {
+  const dd = document.getElementById('spAreaDropdown');
+  if (!dd) return;
+  if (forceShow === true) dd.classList.remove('hidden');
+  else if (forceShow === false) dd.classList.add('hidden');
+  else dd.classList.toggle('hidden');
+}
+
+function filterSpAreaList() {
+  const input = document.getElementById('spAreaSearchInput');
+  const term = (input?.value || '').toLowerCase();
+  const filtered = spAreaState.all.filter(a => a.toLowerCase().includes(term));
+  renderSpAreaDropdownList(filtered);
+}
+
+function renderSpAreaDropdownList(list) {
+  const dd = document.getElementById('spAreaDropdown');
+  dd.innerHTML = '';
+  if (!list || list.length === 0) {
+    dd.innerHTML = `<div class="px-3 py-2 text-gray-500">No matches</div>`;
+    return;
+  }
+  list.forEach(area => {
+    const row = document.createElement('div');
+    row.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between';
+    row.onclick = (e) => { e.stopPropagation(); toggleSpArea(area); };
+
+    const label = document.createElement('span');
+    label.textContent = area;
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = spAreaState.selected.has(area);
+    cb.onclick = (e) => { e.stopPropagation(); toggleSpArea(area); };
+
+    row.appendChild(label);
+    row.appendChild(cb);
+    dd.appendChild(row);
+  });
+}
+
+function toggleSpArea(area) {
+  if (spAreaState.selected.has(area)) spAreaState.selected.delete(area);
+  else spAreaState.selected.add(area);
+
+  renderSpAreaChips();
+  filterSpAreaList();
+  if (typeof loadRetailers === 'function') loadRetailers();
+}
+
+function renderSpAreaChips() {
+  const box = document.getElementById('spAreaMultiSelect');
+  const input = document.getElementById('spAreaSearchInput');
+  box.querySelectorAll('.sp-area-chip').forEach(el => el.remove());
+
+  [...spAreaState.selected].forEach(area => {
+    const chip = document.createElement('span');
+    chip.className = 'sp-area-chip inline-flex items-center bg-blue-100 text-blue-700 text-xs rounded px-2 py-1';
+    chip.innerHTML = `
+      <span class="mr-1">${area}</span>
+      <button type="button" class="ml-1 text-blue-700 hover:text-blue-900">&times;</button>
+    `;
+    chip.querySelector('button').onclick = (e) => {
+      e.stopPropagation();
+      spAreaState.selected.delete(area);
+      renderSpAreaChips();
+      filterSpAreaList();
+      if (typeof loadRetailers === 'function') loadRetailers();
+    };
+    box.insertBefore(chip, input);
+  });
+}
+
+// Close dropdown outside click
+document.addEventListener('click', (e) => {
+  const wrapper = document.getElementById('spAreaMultiSelect')?.parentElement;
+  const dd = document.getElementById('spAreaDropdown');
+  if (!wrapper || !dd) return;
+  if (!wrapper.contains(e.target)) {
+    toggleSpAreaDropdown(false);
+  }
+});
+
+// Helper for filtering
+function getSelectedSpAreas() {
+  return [...spAreaState.selected];
 }
 
 

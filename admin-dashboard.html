@@ -212,15 +212,47 @@
     <tbody id="salespersonTable" class="divide-y divide-gray-200"></tbody>
   </table>
 </div>
-
 <!-- Retailers Tab -->
 <div id="retailersTab" class="hidden p-6 bg-gray-50">
-  <h2 class="text-xl font-bold mb-4">Manage Retailers</h2>
-  <button onclick="openAddRetailerModal()" class="bg-green-600 text-white px-4 py-2 rounded">+ Add Retailer</button>
-<button onclick="openBulkReassignModal()" class="bg-blue-600 text-white rounded px-4 py-2">
-  Reassign Retailers
-</button>
+  <div class="flex justify-between items-center mb-4">
+    <!-- Left side: title + buttons -->
+    <div class="flex items-center gap-3">
+      <h2 class="text-xl font-bold">Manage Retailers</h2>
+      <button onclick="openAddRetailerModal()" class="bg-green-600 text-white px-4 py-2 rounded">
+        + Add Retailer
+      </button>
+      <button onclick="openBulkReassignModal()" class="bg-blue-600 text-white rounded px-4 py-2">
+        Reassign Retailers
+      </button>
+    </div>
 
+    <!-- Right side: Area Filter -->
+    <div class="relative w-full sm:w-[300px]">
+      <label class="text-sm font-medium text-gray-700">Area:</label>
+      <div
+        id="areaMultiSelect"
+        class="border rounded p-2 mt-1 bg-white min-h-[42px] flex flex-wrap gap-1 cursor-text"
+        onclick="toggleAreaDropdown(true)"
+      >
+        <input
+          type="text"
+          id="areaSearchInput"
+          class="outline-none flex-1 min-w-[100px]"
+          placeholder="Search areas..."
+          oninput="filterAreaList()"
+        />
+      </div>
+
+      <div
+        id="areaDropdown"
+        class="absolute z-10 bg-white border border-gray-300 rounded w-full mt-1 max-h-48 overflow-y-auto shadow hidden"
+      >
+        <!-- Filtered area options will appear here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Retailers Table -->
   <table class="min-w-full bg-white shadow rounded overflow-hidden mt-4">
     <thead class="bg-gray-200">
       <tr>
@@ -235,6 +267,7 @@
     <tbody id="retailerTable" class="divide-y divide-gray-200"></tbody>
   </table>
 </div>
+
 
 <!-- Companies Tab -->
 <div id="companiesTab" class="hidden p-6 bg-gray-50">
@@ -440,12 +473,13 @@ document.getElementById("bulkUploadInput").addEventListener("change", async (eve
       const hsn = row.hsn;
       const cgst = parseFloat(row.cgst);
       const sgst = parseFloat(row.sgst);
+      const cess = parseFloat(row.cess);
 
       if (!company_id) {
         throw new Error(`Company '${row.company_name}' not found in system.`);
       }
 
-      return { name, price, base_price, image_url, company_id, min_retail_price, hsn, cgst, sgst };
+      return { name, price, base_price, image_url, company_id, min_retail_price, hsn, cgst, sgst,cess };
     });
 
     // Send to backend
@@ -813,6 +847,10 @@ console.log("Setting productId:", product.id);
   document.getElementById("productName").value = product.name || "";
   document.getElementById("productBasePrice").value = product.base_price || "";
   document.getElementById("productMinRetailPrice").value = product.min_retail_price || "";
+  document.getElementById("productHSN").value = product.hsn || "";
+  document.getElementById("productCGST").value = product.cgst || "";
+  document.getElementById("productSGST").value = product.sgst || "";
+  document.getElementById("productCess").value = product.cess || "";
   document.getElementById("productImage").value = product.image_url || "";
 console.log("Opening product modal, loading companies...");
 await loadCompaniesDropdown(product.company_id || "");
@@ -839,8 +877,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const hsn= document.getElementById('productHSN').value;
     const cgst= parseFloat(document.getElementById('productCGST').value);
     const sgst= parseFloat(document.getElementById('productSGST').value);
+    const cess= parseFloat(document.getElementById('productCess').value);
 
-    const payload = { name, image_url, company_id, base_price, min_retail_price, hsn, cgst, sgst};
+    const payload = { name, image_url, company_id, base_price, min_retail_price, hsn, cgst, sgst, cess};
 
     try {
       const res = await fetch(id ? `https://baba-merchant-store.onrender.com/api/admin/products/${id}` : "https://baba-merchant-store.onrender.com/api/admin/products", {
@@ -1531,49 +1570,71 @@ console.log('Admin dashboard script loaded');
   </script>
 <!-- Add/Edit Product Modal -->
 <div id="productModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
-  <div class="bg-white w-full max-w-md p-6 rounded shadow">
-    <h2 id="productModalTitle" class="text-lg font-bold mb-4">Add Product</h2>
-    <form id="productForm">
-      <input type="hidden" id="productId" />
-      <div class="mb-3">
-        <label class="block text-sm font-medium">Name</label>
-        <input type="text" id="productName" required class="w-full p-2 border rounded mt-1" />
-      </div>
-<label for="editBasePrice" class="block text-sm font-medium">Base Price</label>
-<input id="productBasePrice" type="number" placeholder="Base Price" class="w-full border px-3 py-2 rounded" />
-<label for="editMinRetailPrice" class="block text-sm font-medium">Min Retail Price</label>
-<input id="productMinRetailPrice" type="number" placeholder="Min Retail Price" class="w-full border px-3 py-2 rounded" />
-<div>
-  <label class="block text-sm font-medium">HSN Code</label>
-  <input type="text" id="productHSN" class="w-full border rounded p-2" required />
-</div>
+  <!-- outer container with max height -->
+  <div class="bg-white w-full max-w-md max-h-[90vh] rounded shadow flex flex-col">
+    
+    <!-- Modal Title -->
+    <h2 id="productModalTitle" class="text-lg font-bold p-4 border-b">Add Product</h2>
+    
+    <!-- Scrollable content -->
+    <div class="flex-1 overflow-y-auto p-6">
+      <form id="productForm" class="space-y-3">
+        <input type="hidden" id="productId" />
 
-<div>
-  <label class="block text-sm font-medium">CGST (%)</label>
-  <input type="number" step="0.01" id="productCGST" class="w-full border rounded p-2" required />
-</div>
+        <div>
+          <label class="block text-sm font-medium">Name</label>
+          <input type="text" id="productName" required class="w-full p-2 border rounded mt-1" />
+        </div>
 
-<div>
-  <label class="block text-sm font-medium">SGST (%)</label>
-  <input type="number" step="0.01" id="productSGST" class="w-full border rounded p-2" required />
-</div>
+        <div>
+          <label class="block text-sm font-medium">Base Price</label>
+          <input id="productBasePrice" type="number" placeholder="Base Price" class="w-full border px-3 py-2 rounded" />
+        </div>
 
-<div class="mb-3">
-  <label class="block text-sm font-medium">Company</label>
-  <select id="productCompany" required class="w-full p-2 border rounded mt-1">
-    <option value="">Select a company</option>
-  </select>
-</div>
+        <div>
+          <label class="block text-sm font-medium">Min Retail Price</label>
+          <input id="productMinRetailPrice" type="number" placeholder="Min Retail Price" class="w-full border px-3 py-2 rounded" />
+        </div>
 
-      <div class="mb-3">
-        <label class="block text-sm font-medium">Image URL</label>
-        <input type="url" id="productImage" required class="w-full p-2 border rounded mt-1" />
-      </div>
-      <div class="flex justify-end space-x-2 mt-4">
-        <button type="button" onclick="closeProductModal()" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
-      </div>
-    </form>
+        <div>
+          <label class="block text-sm font-medium">HSN Code</label>
+          <input type="text" id="productHSN" class="w-full border rounded p-2" required />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium">CGST (%)</label>
+          <input type="number" step="0.01" id="productCGST" class="w-full border rounded p-2" required />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium">SGST (%)</label>
+          <input type="number" step="0.01" id="productSGST" class="w-full border rounded p-2" required />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium">Cess (%)</label>
+          <input type="number" step="0.01" id="productCess" class="w-full border rounded p-2" required />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium">Company</label>
+          <select id="productCompany" required class="w-full p-2 border rounded mt-1">
+            <option value="">Select a company</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium">Image URL</label>
+          <input type="url" id="productImage" required class="w-full p-2 border rounded mt-1" />
+        </div>
+      </form>
+    </div>
+
+    <!-- Footer (non-scrollable) -->
+    <div class="flex justify-end space-x-2 p-4 border-t">
+      <button type="button" onclick="closeProductModal()" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+      <button type="submit" form="productForm" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+    </div>
   </div>
 </div>
 
@@ -1648,6 +1709,11 @@ console.log('Admin dashboard script loaded');
       <div>
         <label class="block text-sm">Retailer ID</label>
         <input type="text" id="retailerId" class="w-full border rounded p-2" required />
+      </div>
+
+      <div>
+        <label class="block text-sm">Area</label>
+        <input type="text" id="retailerRegion" class="w-full border rounded p-2" required />
       </div>
       <div>
         <label class="block text-sm">Assign Salesperson</label>
@@ -1775,6 +1841,11 @@ console.log('Admin dashboard script loaded');
       <div>
         <label class="block text-sm">Retailer ID</label>
         <input type="text" id="editRetailerRetailerId" class="w-full border rounded p-2" />
+      </div>
+
+      <div>
+        <label class="block text-sm">Area</label>
+        <input type="text" id="editRetailerRegion" class="w-full border rounded p-2" />
       </div>
 
       <div>
@@ -1935,10 +2006,11 @@ async function saveRetailer() {
   const phone = document.getElementById('retailerPhone').value;
   const email = document.getElementById('retailerEmail').value;
   const password = document.getElementById('retailerPassword').value.trim();
+  const region = document.getElementById('retailerRegion').value;
   const salesperson_id = document.getElementById('retailerSalesperson').value;
   const customer_id = document.getElementById('retailerId').value; // optional
 
-  if (!name || !phone || !email || !salesperson_id || !password) {
+  if (!name || !phone || !email || !salesperson_id || !password || !region) {
     alert("Please fill all required fields");
     return;
   }
@@ -1952,6 +2024,7 @@ async function saveRetailer() {
         phone, 
         email,
         password, 
+        region,
         salesperson_id, 
         customer_id: customer_id
       })
@@ -2079,34 +2152,196 @@ async function loadRetailers() {
     const res = await fetch('https://baba-merchant-store.onrender.com/api/admin/retailers', { credentials: 'include' });
     let retailers = await res.json();
 
-    const tbody = document.getElementById("retailerTable");
+    // Refresh area filter list
+    populateAreaFilter(retailers);
 
+    const tbody = document.getElementById("retailerTable");
     tbody.innerHTML = "";
 
+    // Get the actually selected regions
+    const selectedAreas = getSelectedAreas();  
+
     retailers.forEach(r => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="px-4 py-2 border">${r.name}</td>
-        <td class="px-4 py-2 border">${r.phone || '-'}</td>
-        <td class="px-4 py-2 border">${r.email || '-'}</td>
-        <td class="px-4 py-2 border">${r.customer_id}</td>
-        <td class="px-4 py-2 border">${r.salesperson_name || 'Unassigned'}</td>
-        <td class="px-4 py-2 border flex space-x-2">
-          <button class="bg-yellow-500 text-white px-2 py-1 rounded text-xs" 
-                  onclick="openEditRetailerModal(${r.id}, '${r.name}', '${r.phone}', '${r.email}','${r.customer_id}', '${r.salesperson_id}')">
-            Edit
-          </button>
-          <button class="bg-red-500 text-white px-2 py-1 rounded text-xs" 
-                  onclick="deleteRetailer(${r.id})">
-            Delete
-          </button>
-        </td>
-      `;
-      tbody.appendChild(tr);
+      if (selectedAreas.length === 0 || selectedAreas.includes((r.region || '').trim())) {
+        const tr = document.createElement("tr");
+        tr.setAttribute("data-region", r.region || '');
+        tr.innerHTML = `
+          <td class="px-4 py-2 border">${r.name}</td>
+          <td class="px-4 py-2 border">${r.phone || '-'}</td>
+          <td class="px-4 py-2 border">${r.email || '-'}</td>
+          <td class="px-4 py-2 border">${r.customer_id}</td>
+          <td class="px-4 py-2 border">${r.salesperson_name || 'Unassigned'}</td>
+          <td class="px-4 py-2 border flex space-x-2">
+            <button class="bg-yellow-500 text-white px-2 py-1 rounded text-xs" 
+                    onclick="openEditRetailerModal(${r.id}, '${r.name}', '${r.phone}', '${r.email}', '${r.customer_id}', '${r.region}', '${r.salesperson_id}')">
+              Edit
+            </button>
+            <button class="bg-red-500 text-white px-2 py-1 rounded text-xs" 
+                    onclick="deleteRetailer(${r.id})">
+              Delete
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
     });
   } catch (err) {
     console.error("Error loading retailers:", err);
   }
+}
+
+const areaState = {
+  all: [],            // all available regions
+  selected: new Set() // chosen regions
+};
+
+// Populate the Area list (tries https://baba-merchant-store.onrender.com/api/admin/regions, falls back to unique regions from retailers)
+async function populateAreaFilter() {
+  try {
+    let regions = [];
+
+    // Try dedicated regions endpoint if you have it
+    try {
+      const r = await fetch('https://baba-merchant-store.onrender.com/api/admin/retailers', { credentials: 'include' });
+      if (r.ok) {
+        const data = await r.json();
+        // handle both ['North','South'] or [{region:'North'}] shapes
+        regions = Array.isArray(data)
+          ? data.map(x => (typeof x === 'string' ? x : (x.region || x.name))).filter(Boolean)
+          : [];
+      }
+    } catch { /* ignore and fallback below */ }
+
+    // Fallback: derive distinct regions from retailers
+    if (!regions || regions.length === 0) {
+      const res = await fetch('https://baba-merchant-store.onrender.com/api/admin/retailers', { credentials: 'include' });
+      const retailers = await res.json();
+      regions = [...new Set(retailers.map(r => (r.region || '').trim()).filter(Boolean))];
+    }
+
+    areaState.all = regions.sort((a, b) => a.localeCompare(b));
+    renderAreaDropdownList(areaState.all);
+    renderAreaChips(); // initial empty selection
+  } catch (err) {
+    console.error('populateAreaFilter failed:', err);
+  }
+}
+
+// Open/close dropdown
+function toggleAreaDropdown(forceShow) {
+  const dd = document.getElementById('areaDropdown');
+  if (!dd) return;
+
+  if (forceShow === true) dd.classList.remove('hidden');
+  else if (forceShow === false) dd.classList.add('hidden');
+  else dd.classList.toggle('hidden');
+}
+
+// Filter list as user types
+function filterAreaList() {
+  const input = document.getElementById('areaSearchInput');
+  const term = (input?.value || '').toLowerCase();
+  const filtered = areaState.all.filter(a => a.toLowerCase().includes(term));
+  renderAreaDropdownList(filtered);
+}
+
+// Render dropdown options
+function renderAreaDropdownList(list) {
+  const dd = document.getElementById('areaDropdown');
+  if (!dd) return;
+  dd.innerHTML = '';
+
+  if (!list || list.length === 0) {
+    dd.innerHTML = `<div class="px-3 py-2 text-gray-500">No matches</div>`;
+    return;
+  }
+
+  list.forEach(area => {
+    const row = document.createElement('div');
+    row.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between';
+    row.onclick = (e) => { e.stopPropagation(); toggleArea(area); };
+
+    const label = document.createElement('span');
+    label.textContent = area;
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = areaState.selected.has(area);
+    cb.onclick = (e) => { e.stopPropagation(); toggleArea(area); };
+
+    row.appendChild(label);
+    row.appendChild(cb);
+    dd.appendChild(row);
+  });
+}
+
+// Add/remove area from selection
+function toggleArea(area) {
+  if (areaState.selected.has(area)) areaState.selected.delete(area);
+  else areaState.selected.add(area);
+
+  renderAreaChips();
+  filterAreaList(); // refresh checkboxes
+  // Refilter retailer table whenever selection changes
+  if (typeof loadRetailers === 'function') loadRetailers();
+}
+
+// Render chips inside the multiselect container
+function renderAreaChips() {
+  const box = document.getElementById('areaMultiSelect');
+  const input = document.getElementById('areaSearchInput');
+  if (!box || !input) return;
+
+  // remove existing chips
+  box.querySelectorAll('.area-chip').forEach(el => el.remove());
+
+  // add chips for selected areas
+  [...areaState.selected].forEach(area => {
+    const chip = document.createElement('span');
+    chip.className = 'area-chip inline-flex items-center bg-blue-100 text-blue-700 text-xs rounded px-2 py-1';
+    chip.innerHTML = `
+      <span class="mr-1">${area}</span>
+      <button type="button" class="ml-1 text-blue-700 hover:text-blue-900" aria-label="remove">&times;</button>
+    `;
+    chip.querySelector('button').onclick = (e) => {
+      e.stopPropagation();
+      areaState.selected.delete(area);
+      renderAreaChips();
+      filterAreaList();
+      if (typeof loadRetailers === 'function') loadRetailers();
+    };
+    box.insertBefore(chip, input);
+  });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const wrapper = document.getElementById('areaMultiSelect')?.parentElement; // container that holds input + dropdown
+  const dd = document.getElementById('areaDropdown');
+  if (!wrapper || !dd) return;
+
+  if (!wrapper.contains(e.target)) {
+    toggleAreaDropdown(false);
+  }
+});
+
+// Optional: handle Backspace to remove last chip when input empty
+document.addEventListener('keydown', (e) => {
+  const input = document.getElementById('areaSearchInput');
+  if (!input || document.activeElement !== input) return;
+
+  if (e.key === 'Backspace' && input.value === '' && areaState.selected.size > 0) {
+    const last = [...areaState.selected].pop();
+    areaState.selected.delete(last);
+    renderAreaChips();
+    filterAreaList();
+    if (typeof loadRetailers === 'function') loadRetailers();
+  }
+});
+
+// Helper to use in loadRetailers()
+function getSelectedAreas() {
+  return [...areaState.selected];
 }
 
 async function populateSalespersonDropdown() {
@@ -2141,12 +2376,13 @@ function closeAddRetailerModal() {
   document.getElementById("addRetailerModal").classList.add("hidden");
 }
 
-async function openEditRetailerModal(id, name, phone, email, customer_id, salesperson_id) {
+async function openEditRetailerModal(id, name, phone, email, customer_id, region, salesperson_id) {
   document.getElementById("editRetailerId").value = id;
   document.getElementById("editRetailerName").value = name;
   document.getElementById("editRetailerPhone").value = phone;
   document.getElementById("editRetailerEmail").value = email;
   document.getElementById("editRetailerRetailerId").value = customer_id;
+  document.getElementById("editRetailerRegion").value = region;
 
   // populate salesperson dropdown
   const select = document.getElementById("editRetailerSalesperson");
@@ -2212,13 +2448,14 @@ async function saveEditedRetailer() {
   const name = document.getElementById("editRetailerName").value;
   const phone = document.getElementById("editRetailerPhone").value;
   const email = document.getElementById("editRetailerEmail").value;
+  const region = document.getElementById("editRetailerRegion").value;
   const customer_id = document.getElementById("editRetailerRetailerId").value;
   const salesperson_id = document.getElementById("editRetailerSalesperson").value;
 
   const res = await fetch(`https://baba-merchant-store.onrender.com/api/admin/retailers/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, phone, email, customer_id, salesperson_id })
+    body: JSON.stringify({ name, phone, email, customer_id, region, salesperson_id })
   });
 
   if (res.ok) {
