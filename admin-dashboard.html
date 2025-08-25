@@ -1383,7 +1383,7 @@ async function saveCreatedOrder() {
   document.querySelectorAll("#orderProductsContainer > div").forEach(row => {
     const product_id = row.querySelector("select").value;
     const quantity = row.querySelector("input[type='number']").value;
-    const price = row.querySelector("input[placeholder='Negotiated Price']").value;
+    const price = row.querySelector("input[placeholder='Final Price']").value;
     if (product_id && quantity && price) {
       items.push({ product_id, quantity, negotiated_price: price });
     }
