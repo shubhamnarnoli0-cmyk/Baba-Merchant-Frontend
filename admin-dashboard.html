@@ -1752,14 +1752,20 @@ console.log('Admin dashboard script loaded');
     </form>
   </div>
 </div>
-<div id="retailersModal" class="fixed inset-0 hidden bg-black bg-opacity-40 flex items-center justify-center z-50">
-  <div class="bg-white p-6 rounded shadow-lg w-full max-w-md">
-    <h2 class="text-lg font-bold mb-3">Assigned Retailers</h2>
-    <ul id="retailersList" class="list-disc list-inside mb-4"></ul>
-    <button onclick="closeRetailersModal()" class="bg-gray-500 text-white px-4 py-2 rounded">Close</button>
+<div id="retailersModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-40 flex justify-center items-center z-50">
+  <div class="bg-white rounded-lg shadow-lg w-[500px] max-h-[80vh] p-6 overflow-hidden flex flex-col">
+    <h2 class="text-lg font-bold mb-4 text-orange-700">Assigned Retailers</h2>
+
+    <!-- Scrollable list -->
+    <div id="retailersList" class="flex-1 overflow-y-auto border rounded p-2 max-h-[60vh]">
+      <!-- Retailers will be injected here -->
+    </div>
+
+    <div class="flex justify-end mt-4">
+      <button onclick="closeRetailersModal()" class="px-3 py-1 bg-gray-300 rounded">Close</button>
+    </div>
   </div>
-</div>
-<div id="editCompanyModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
+</div><div id="editCompanyModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
   <div class="bg-white rounded-lg shadow-lg w-96 p-6">
     <h2 class="text-lg font-bold mb-4">Edit Company</h2>
     <form id="editCompanyForm" class="space-y-3">
