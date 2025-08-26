@@ -2225,6 +2225,8 @@ async function populateAreaFilter() {
       regions = [...new Set(retailers.map(r => (r.region || '').trim()).filter(Boolean))];
     }
 
+regions = [...new Set(regions)];
+
     areaState.all = regions.sort((a, b) => a.localeCompare(b));
     renderAreaDropdownList(areaState.all);
     renderAreaChips(); // initial empty selection
