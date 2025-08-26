@@ -176,7 +176,7 @@ function renderProducts(products) {
         </div>
         <div class="flex flex-col">
           <label class="text-xs text-gray-500">Final Price</label>
-          <input type="number" min="p.min_retail_price" max="${p.base_price}" value="0" 
+          <input type="number" min="p.min_retail_price" value="0" 
             class="w-16 border rounded p-1 text-center text-sm"
             id="discount-${p.id}">
         </div>
@@ -201,7 +201,7 @@ function addProductToCart(productId, name, basePrice, price, minPrice) {
   const discount = parseFloat(document.getElementById(`discount-${productId}`).value) || 0;
 
   if (qty <= 0) return alert("Enter valid quantity");
-  if (discount < minPrice || discount > basePrice) return alert(`Final Price must be between ₹${minPrice} and ₹${basePrice}`);
+  if (discount < minPrice) return alert(`Final Price must be more than ₹${minPrice}`);
 
   cart[productId] = { product_id: productId, quantity: qty, negotiated_price: discount, name, base_price: basePrice, unit_price: price };
   renderCart();
