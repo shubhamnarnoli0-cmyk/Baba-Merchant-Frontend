@@ -1094,7 +1094,7 @@ function renderEditOrderProducts() {
 
         <div class="w-20 text-right">
           <label for="discount-${idx}" class="block text-xs font-semibold mb-1">Final Price</label>
-          <input type="number" id="discount-${idx}" min="0" max="100" value="${item.negotiated_price}" 
+          <input type="number" id="discount-${idx}" min="0" value="${item.negotiated_price}" 
             class="border rounded p-1 w-full text-right" data-idx="${idx}" 
             onchange="editOrderDiscountChanged(this)">
         </div>
@@ -1118,7 +1118,7 @@ function editOrderQuantityChanged(input) {
 // Discount % changed handler
 function editOrderDiscountChanged(input) {
   const idx = +input.dataset.idx;
-  currentEditOrder.items[idx].negotiated_price = Math.min(100, Math.max(0, parseFloat(input.value) || 0));
+  currentEditOrder.items[idx].negotiated_price = Math.max(0, parseFloat(input.value) || 0);
 }
 
 // Remove product from order
@@ -1162,7 +1162,7 @@ function addProductToOrderFromModal() {
     return;
   }
   const quantity = Math.max(1, parseInt(document.getElementById('addProductQty').value) || 1);
-  const discount = Math.min(100, Math.max(0, parseFloat(document.getElementById('addProductDiscount').value) || 0));
+  const discount = Math.max(0, parseFloat(document.getElementById('addProductDiscount').value) || 0);
 
   const product = allProductsList.find(p => p.id === productId);
   if (!product) {
@@ -1895,7 +1895,7 @@ console.log('Admin dashboard script loaded');
       <input type="number" id="addProductQty" min="1" value="1" class="border rounded p-2 w-full mb-3"/>
 
       <label class="block mb-1 font-semibold" for="addProductDiscount">Final Price</label>
-      <input type="number" id="addProductDiscount" min="0" max="100" value="0" class="border rounded p-2 w-full mb-4"/>
+      <input type="number" id="addProductDiscount" min="0" value="0" class="border rounded p-2 w-full mb-4"/>
 
       <div class="flex justify-end space-x-3">
         <button type="button" onclick="closeAddProductInOrderModal()" class="bg-gray-300 px-4 py-2 rounded">Cancel</button>
