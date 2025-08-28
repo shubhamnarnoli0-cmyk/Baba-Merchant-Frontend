@@ -1906,50 +1906,57 @@ console.log('Admin dashboard script loaded');
 </div>
 <!-- Create Order Modal -->
 <div id="createOrderModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center z-50">
-  <div class="bg-white rounded-lg shadow-lg w-[600px] p-6">
-    <h2 class="text-lg font-bold mb-4 text-orange-700">Create New Order</h2>
-    <form id="createOrderForm" class="space-y-3">
-      
-      <!-- Salesperson -->
-      <div>
-        <label class="block text-sm">Assign Salesperson</label>
-        <select id="orderSalesperson" class="w-full border rounded p-2" required></select>
-      </div>
+  <div class="bg-white rounded-lg shadow-lg w-[600px] max-h-[90vh] flex flex-col">
+    
+    <!-- Modal Header -->
+    <div class="px-6 py-4 border-b">
+      <h2 class="text-lg font-bold text-orange-700">Create New Order</h2>
+    </div>
 
-      <!-- Retailer -->
-      <div>
-        <label class="block text-sm">Select Retailer</label>
-        <select id="orderRetailer" class="w-full border rounded p-2" required></select>
-      </div>
+    <!-- Modal Body (scrollable) -->
+    <div class="px-6 py-4 overflow-y-auto" style="max-height:70vh;">
+      <form id="createOrderForm" class="space-y-3">
+        
+        <!-- Salesperson -->
+        <div>
+          <label class="block text-sm">Assign Salesperson</label>
+          <select id="orderSalesperson" class="w-full border rounded p-2" required></select>
+        </div>
 
-      <!-- Products Section -->
-<!-- Products Section -->
-<div class="mt-4">
-  <label class="block text-sm font-medium mb-2">Products</label>
-  <div id="orderProductsContainer" class="space-y-2">
-    <!-- Product rows will be added here -->
-  </div>
-  <button type="button" onclick="addProductRow()" 
-    class="mt-2 px-3 py-1 bg-green-600 text-white rounded shadow">
-    + Add Product
-  </button>
-</div>
+        <!-- Retailer -->
+        <div>
+          <label class="block text-sm">Select Retailer</label>
+          <select id="orderRetailer" class="w-full border rounded p-2" required></select>
+        </div>
 
+        <!-- Products Section -->
+        <div class="mt-4">
+          <label class="block text-sm font-medium mb-2">Products</label>
+          <div id="orderProductsContainer" class="space-y-2">
+            <!-- Product rows will be added here -->
+          </div>
+          <button type="button" onclick="addProductRow()" 
+            class="mt-2 px-3 py-1 bg-green-600 text-white rounded shadow">
+            + Add Product
+          </button>
+        </div>
 
-      <!-- Notes -->
-      <div>
-        <label class="block text-sm">Notes</label>
-        <textarea id="orderNotes" class="w-full border rounded p-2"></textarea>
-      </div>
+        <!-- Notes -->
+        <div>
+          <label class="block text-sm">Notes</label>
+          <textarea id="orderNotes" class="w-full border rounded p-2"></textarea>
+        </div>
+      </form>
+    </div>
 
-      <div class="flex justify-end space-x-2 mt-4">
-        <button type="button" onclick="closeCreateOrderModal()" 
-          class="px-3 py-1 rounded bg-gray-300">Cancel</button>
+    <!-- Modal Footer -->
+    <div class="px-6 py-4 border-t flex justify-end space-x-2">
+      <button type="button" onclick="closeCreateOrderModal()" 
+        class="px-3 py-1 rounded bg-gray-300">Cancel</button>
+      <button type="button" onclick="saveCreatedOrder()" 
+        class="px-3 py-1 rounded bg-orange-600 text-white">Save Order</button>
+    </div>
 
-<button type="button" onclick="saveCreatedOrder()" class="px-3 py-1 rounded bg-orange-600 text-white">Save Order</button>
-
-      </div>
-    </form>
   </div>
 </div>
 <div id="bulkReassignModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
