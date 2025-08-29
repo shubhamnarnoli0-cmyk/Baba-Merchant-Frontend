@@ -72,6 +72,21 @@
             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow">
       Create New Order
     </button>
+
+<!-- Export Order Summary (Download Icon) -->
+<button onclick="openExportSummaryModal()" 
+        class="p-2 rounded hover:bg-gray-100" 
+        title="Export Order Summary">
+  <svg xmlns="http://www.w3.org/2000/svg" 
+       fill="none" viewBox="0 0 24 24" 
+       stroke="currentColor" 
+       class="h-6 w-6 text-gray-600 hover:text-blue-600">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+          d="M4 16v2a2 2 0 002 2h12a2 2 0 
+             002-2v-2M7 10l5 5m0 0l5-5m-5 
+             5V4"/>
+  </svg>
+</button>
 <button id="notificationBell" class="relative">
   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 hover:text-blue-600" fill="none"
     viewBox="0 0 24 24" stroke="currentColor">
@@ -1564,6 +1579,71 @@ async function bulkReassignRetailers() {
 }
 
 
+function openExportSummaryModal() {
+  const selected = (Array.isArray(selectedCustomers) && selectedCustomers.length > 0)
+    ? selectedCustomers.map(c => c.name)  // ✅ extract names
+    : ["All"];
+console.log("Selected Customers:", selectedCustomers);
+ const status = document.getElementById("statusFilter")?.value || "All";
+  const start = document.getElementById("startDateFilter")?.value;
+  const end = document.getElementById("endDateFilter")?.value;
+  const dateRange = (start && end) ? `${start} → ${end}` : "All";
+
+  document.getElementById("exportCustomers").innerText = selected.join(", ");
+  document.getElementById("exportStatus").innerText = status || "All";
+  document.getElementById("exportDateRange").innerText = dateRange;
+
+  document.getElementById("exportSummaryModal").classList.remove("hidden");
+}
+
+
+function closeExportSummaryModal() {
+  document.getElementById("exportSummaryModal").classList.add("hidden");
+}
+
+function exportOrderSummary() {
+  const format = document.getElementById("exportFormat").value;
+
+  const filters = {
+    customers: typeof getSelectedCustomers === "function" ? getSelectedCustomers() : [],
+    status: document.getElementById("statusFilter").value,
+    startDate: document.getElementById("startDateFilter").value,
+    endDate: document.getElementById("endDateFilter").value,
+    format: format
+  };
+
+  fetch("/api/admin/export-orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(filters)
+  })
+  .then(res => res.blob())
+  .then(blob => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `order_summary.${format === "excel" ? "xlsx" : "csv"}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  })
+  .catch(err => console.error("Export failed", err));
+
+  closeExportSummaryModal();
+}
+
+function getSelectedCustomers() {
+  // Assuming selected customers are rendered inside #customerMultiSelect as span tags
+  const container = document.getElementById("customerMultiSelect");
+  if (!container) return [];
+
+  const selected = Array.from(container.querySelectorAll(".selected-customer"))
+                       .map(el => el.textContent.trim());
+
+  return selected.length > 0 ? selected : ["All"];
+}
+
 
 console.log('Admin dashboard script loaded');
 
@@ -1972,6 +2052,40 @@ console.log('Admin dashboard script loaded');
         <button type="button" onclick="bulkReassignRetailers()" class="bg-green-600 text-white px-4 py-2 rounded">Reassign All</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Export Summary Modal -->
+<div id="exportSummaryModal" 
+     class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg w-[400px] p-6">
+    <h3 class="text-lg font-semibold mb-4">Export Order Summary</h3>
+    
+    <!-- Applied Filters Preview -->
+    <div class="mb-4 text-sm text-gray-600">
+      <p><strong>Customer(s):</strong> <span id="exportCustomers">All</span></p>
+      <p><strong>Status:</strong> <span id="exportStatus">All</span></p>
+      <p><strong>Date Range:</strong> <span id="exportDateRange">All</span></p>
+    </div>
+
+    <!-- File Format -->
+    <label class="text-sm font-medium text-gray-700">Export Format:</label>
+    <select id="exportFormat" class="border p-2 rounded w-full mt-1 mb-4">
+      <option value="excel">Excel (.xlsx)</option>
+      <option value="csv">CSV (.csv)</option>
+    </select>
+
+    <!-- Actions -->
+    <div class="flex justify-end gap-2">
+      <button onclick="closeExportSummaryModal()" 
+              class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+        Cancel
+      </button>
+      <button onclick="exportOrderSummary()" 
+              class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+        Export
+      </button>
+    </div>
   </div>
 </div>
 
