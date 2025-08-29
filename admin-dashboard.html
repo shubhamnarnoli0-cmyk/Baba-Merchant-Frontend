@@ -1612,7 +1612,7 @@ function exportOrderSummary() {
     format: format
   };
 
-  fetch("/api/admin/export-orders", {
+  fetch("https://baba-merchant-store.onrender.com/api/admin/export-orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(filters)
